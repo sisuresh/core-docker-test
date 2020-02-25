@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -e
+
+wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+
+add-apt-repository "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch main"
+add-apt-repository "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main"
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+
+apt-get install -y libstdc++6 libpq5 lldb-5.0 curl
+
+apt-get install -y python-pip
+pip install awscli --upgrade  # for uploading history to s3
+pip install boto              # for sending crash emails
+
+apt-get install -y postgresql-client sqlite3
+
+apt-get install -y apt-transport-https
+
+#add SDF repo key
+wget -qO - https://apt.stellar.org/SDF.asc | apt-key add -
+echo "deb https://apt.stellar.org/public stable/" | tee -a /etc/apt/sources.list.d/SDF.list
+
+#[[ -f stellar-core.deb ]] || wget -nv -O stellar-core.deb https://s3.amazonaws.com/stellar.org/releases/stellar-core/stellar-core-${STELLAR_CORE_VERSION}_amd64.deb]
+#dpkg -i stellar-core.deb
+#rm stellar-core.deb
+
+apt-get update
+apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
+#apt-get install -y stellar-core_${STELLAR_CORE_VERSION}_amd64.deb
+
+# purge stuff we don't directly need
+apt-get purge -y sgml-base ucf gcc g++ xz-utils libpod-latex-perl dbus
+apt-get autoremove -y
+
+# put back 2 needed awscli packages
+apt-get install -y python-six python-colorama
+
+apt-get clean
+rm -rf /var/lib/apt/lists/*
+rm -rf /var/log/*.log /var/log/*/*.log
+
+# delete a handful of items we don't need and take up some actual space
+rm -rf /usr/include
+rm -rf /usr/share/{file,man,doc}
+rm -rf /usr/lib/llvm-5.0/build /usr/share/llvm-5.0/cmake
+rm -rf /usr/lib/llvm-5.0/lib/*.a ./lib/x86_64-linux-gnu/*.a
+rm -rf /usr/lib/llvm-5.0/bin/{opt,lli,llc,llvm-tblgen,bugpoint}
+rm -rf /usr/local/lib/python2.7/dist-packages/awscli/examples
+rm -rf /usr/share/postgresql/*/man
